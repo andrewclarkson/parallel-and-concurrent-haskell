@@ -1,2 +1,7 @@
+# Ignore all files that don't have an extension
+*
+!*.*
+
+# Ignore some output files
 *.hi
 *.o
