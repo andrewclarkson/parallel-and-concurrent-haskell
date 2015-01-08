@@ -10,12 +10,12 @@ evalPair sa sb (a,b) = do
     b' <- sb b
     return (a', b')
  
-parPair :: Strategy (a, b)
-parPair = evalPair rpar rpar
+parPair :: Strategy a -> Strategy b -> Strategy (a, b)
+parPair sa sb = evalPair (rparWith sa) (rparWith sb)
 
 main :: IO ()
 main = do
-    let pair = (fib 35, fib 36) `using` parPair
+    let pair = (fib 35, fib 36) `using` parPair rseq rseq
     print(pair)
     return ()
 
