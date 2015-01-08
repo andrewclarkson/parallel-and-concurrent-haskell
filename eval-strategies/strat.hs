@@ -10,10 +10,9 @@ parPair (a, b) = do
     b' <- rpar b
     return (a', b')
 
-
 main :: IO ()
 main = do
-    let pair = runEval $ parPair (fib 35, fib 36)
+    let pair = (fib 35, fib 36) `using` parPair
     print(pair)
     return ()
 
