@@ -1,4 +1,5 @@
 import System.IO (readFile)
+import Control.Parallel.Strategies
 import Data.Binary
 import Text.Printf (printf)
 import System.Mem (performGC)
@@ -40,6 +41,10 @@ addToPointSum :: PointSum -> Point -> PointSum
 addToPointSum (PointSum count xs ys) (Point x y)
     = PointSum (count + 1) (xs + x) (ys + y)
 
+addPointSums :: PointSum -> PointSum -> PointSum
+addPointSums (PointSum c1 x1 y1) (PointSum c2 x2 y2) =
+    PointSum (c1 + c2) (x1 + x2) (y1 + y2)
+
 -- A centroid is the average of the points this 
 -- function calculates the centroid from the PointSum
 calculateCentroid :: PointSum -> Point
@@ -63,6 +68,13 @@ addPoint vector nearest point = do
     pointSum <- MVector.read vector index
     MVector.write vector index $! addToPointSum pointSum point
 
+split :: Int -> [a] -> [[a]]
+split nchunks xs = chunk (length xs `quot` nchunks) xs
+
+chunk :: Int -> [a] -> [[a]]
+chunk n [] = []
+chunk n xs = as : chunk n bs
+    where (as,bs) = splitAt n xs
 
 -- Assigns points to the cluster they are closest to
 assign :: Int -> [Cluster] -> [Point] -> Vector PointSum
@@ -79,20 +91,26 @@ makeNewClusters vector =
     , count > 0
     ]
 
-step :: Int -> [Cluster] -> [Point] -> [Cluster]
-step length clusters points = makeNewClusters (assign length clusters points)
+combine :: Vector PointSum -> Vector PointSum -> Vector PointSum
+combine = Vector.zipWith addPointSums
 
-kmeans :: Int -> [Point] -> [Cluster] -> IO [Cluster]
-kmeans nclusters points clusters = 
+step :: Int -> [Cluster] -> [[Point]] -> [Cluster]
+step length clusters points = makeNewClusters $ 
+    foldr1 combine $ (map (assign length clusters) points 
+        `using` parList rseq)
+
+kmeans :: Int -> Int -> [Point] -> [Cluster] -> IO [Cluster]
+kmeans nchunks nclusters points clusters = 
     let
+        chunks = split nchunks points
         loop :: Int -> [Cluster] -> IO [Cluster]
         loop n clusters | n > tooMany = do
             putStrLn "Too many iterations have passed"
             return clusters
         loop n clusters = do
-            printf "Iteration %d\n" n
-            putStr (unlines (map show clusters))
-            let clusters' = step nclusters clusters points
+            -- printf "Iteration %d\n" n
+            -- putStr (unlines (map show clusters))
+            let clusters' = step nclusters clusters chunks
             if clusters' == clusters
                 then return clusters
                 else loop (n + 1) clusters'
@@ -108,7 +126,7 @@ main = runInUnboundThread $ do
   let nclusters = length clusters
   performGC
   t0 <- getCurrentTime
-  final_clusters <- kmeans nclusters points clusters
+  final_clusters <- kmeans 50 nclusters points clusters
   t1 <- getCurrentTime
   print final_clusters
   printf "Total time: %.2f\n" (realToFrac (diffUTCTime t1 t0) :: Double)
