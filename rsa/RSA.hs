@@ -9,7 +9,7 @@ where
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy.Char8 (ByteString)
 
-import Control.Parallel.Strategies (withStrategy, parList, rdeepseq)
+import Control.Parallel.Strategies (withStrategy, parBuffer, rdeepseq)
 
 -- Numbers taken from the Wikipedia example
 n = 3233 :: Integer
@@ -23,7 +23,7 @@ public = Key n e
 
 encrypt :: Key -> ByteString -> ByteString
 encrypt (Key n e) = ByteString.unlines
-            . withStrategy (parList rdeepseq)
+            . withStrategy (parBuffer 100 rdeepseq)
             . map (ByteString.pack . show . power e n . code )
             . chunk (size n)
                       
