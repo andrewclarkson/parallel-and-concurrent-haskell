@@ -13,16 +13,11 @@ spawn p = do
         put i x
     return i
 
-parMapM :: NFData b => (a -> Par b) -> [a] -> Par [b]
-parMapM f as = do
-    ibs <- mapM (spawn . f) as
+parMap :: NFData b => (a -> b) -> [a] -> Par [b]
+parMap f as = do
+    ibs <- mapM (spawn . return . f) as
     mapM get ibs
-
-fibM :: Int -> Par Int
-fibM x = do
-    return (fib x)
-
 
 main :: IO ()
 main = do
-    print $ runPar $ parMapM fibM [0 .. 20]
+    print $ runPar $ parMap fib [0 .. 20]
