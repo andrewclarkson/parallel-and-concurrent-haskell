@@ -8,12 +8,12 @@ fibPar :: Int -> Int -> Par Int
 fibPar n m = do 
     i <- new 
     j <- new
-    fork (put i (fib n))
-    fork (put j (fib m))
+    fork $ put i (fib n)
+    fork $ put j (fib m)
     a <- get i
     b <- get j
-    return (a + b)
+    return $ a + b
 
 main :: IO ()
 main = do
-    print (runPar (fibPar 12 13))
+    print $ runPar $ fibPar 12 13
