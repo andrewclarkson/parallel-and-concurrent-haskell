@@ -3,10 +3,16 @@ import Data.List (foldl')
 import qualified Data.IntMap.Strict as Map
 import Data.IntMap.Strict (IntMap)
 
+import Control.Monad.Par (runPar, spawn, get)
+
+import Data.Traversable (traverse)
+
 import Graph
 
 update :: [Vertex] -> Graph -> Int -> Graph
-update vs g k = Map.mapWithKey shortmap' g
+update vs g k = runPar $ do
+    m <- Map.traverseWithKey (\i jmap -> spawn $ return $ shortmap' i jmap) g
+    traverse get m
     where
         shortmap' = shortmap vs g k
 
