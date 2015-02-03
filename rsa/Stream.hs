@@ -3,11 +3,22 @@ module Stream (
     streamFromList,
     streamFold,
     streamMap
-) where
+) 
+where
 
-data IList a = Nil | Cons a (IVar (IList a))
+import Control.Monad.Par (IVar,  Par, fork, put, get, new)
+import Control.Parallel.Strategies (NFData)
+import Control.DeepSeq
+
+data IList a 
+    = Nil 
+    | Cons a (IVar (IList a))
 
 type Stream a = IVar (IList a)
+
+instance NFData a => NFData (IList a) where
+  rnf Nil = ()
+  rnf (Cons a b) = rnf a `seq` rnf b
 
 streamFromList :: NFData a => [a] -> Par (Stream a)
 streamFromList xs = do
@@ -21,12 +32,12 @@ streamFromList xs = do
             put var (Cons x tail)
             loop xs tail
 
-streamFold :: (a -> b -> c) -> a -> Stream b -> Par a
-streamFold fn !acc instream = do
+streamFold :: (a -> b -> a) -> a -> Stream b -> Par a
+streamFold fn acc instream = do
     ilist <- get instream
     case ilist of
-        Nil -> return acc
-        Cons head tail -> streamFold fn (fn acc head) tail
+        Nil             -> return acc
+        Cons head tail  -> streamFold fn (fn acc head) tail
 
 streamMap :: NFData b => (a -> b) -> Stream a -> Par (Stream b)
 streamMap fn instream = do
@@ -35,14 +46,11 @@ streamMap fn instream = do
     return outstream
     where
         loop instream outstream = do 
-        ilist <- get instream
-        case ilist of
-            Nil -> put outstream Nil
-            Cons head tail -> do
-                newtail <- new
-                put outstream (Cons (fn head) newtail)
-                loop tail newtail
-
-
-
+            ilist <- get instream
+            case ilist of
+                Nil             -> put outstream Nil
+                Cons head tail  -> do
+                    newtail <- new
+                    put outstream (Cons (fn head) newtail)
+                    loop tail newtail
 
