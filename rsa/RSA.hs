@@ -1,8 +1,14 @@
 module RSA (
+    RSAKey(..),
     encrypt,
+    encryptStream,
     decrypt,
+    decryptStream,
     public,
-    private
+    private,
+    chunk,
+    size,
+    integer
 ) 
 where
 
@@ -10,31 +16,43 @@ import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy.Char8 (ByteString)
 
 import Control.Parallel.Strategies (withStrategy, parBuffer, rdeepseq)
+import Control.Monad.Par (Par)
+
+import Stream (Stream, streamMap) 
 
 -- Numbers taken from the Wikipedia example
 n = 3233 :: Integer
 d = 2753 :: Integer
 e = 17 :: Integer
 
-data Key = Key !Integer !Integer
+data RSAKey = RSAKey Integer Integer deriving (Show)
 
-private = Key n d
-public = Key n e
+private = RSAKey n d
+public = RSAKey n e
 
-encrypt :: Key -> ByteString -> ByteString
-encrypt (Key n e) = ByteString.unlines
+encrypt :: RSAKey -> ByteString -> ByteString
+encrypt (RSAKey n e) = ByteString.unlines
             . withStrategy (parBuffer 100 rdeepseq)
             . map (ByteString.pack . show . power e n . code )
             . chunk (size n)
+
+encryptStream :: RSAKey -> Stream ByteString -> Par (Stream ByteString)
+encryptStream (RSAKey n e) s = streamMap (ByteString.pack . show . power e n . code) s 
                       
-decrypt :: Key -> ByteString -> ByteString
-decrypt (Key n d) = ByteString.concat
+decrypt :: RSAKey -> ByteString -> ByteString
+decrypt (RSAKey n d) = ByteString.concat
             . map (ByteString.pack . decode . power d n)
             . integers
             . ByteString.lines
 
+decryptStream :: RSAKey -> Stream ByteString -> Par (Stream ByteString)
+decryptStream (RSAKey n d) s = streamMap (ByteString.pack . decode . power d n . integer) s
+
 integers :: [ByteString] -> [Integer]
 integers bs = [ i | Just (i,_) <- map ByteString.readInteger bs ]
+
+integer :: ByteString -> Integer
+integer b | Just (i,_) <- ByteString.readInteger b = i
 
 code :: ByteString -> Integer
 code = ByteString.foldl' accum 0
