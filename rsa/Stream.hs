@@ -1,3 +1,10 @@
+module Stream (
+    Stream,
+    streamFromList,
+    streamFold,
+    streamMap
+) where
+
 data IList a = Nil | Cons a (IVar (IList a))
 
 type Stream a = IVar (IList a)
