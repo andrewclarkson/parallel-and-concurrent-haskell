@@ -1,3 +1,14 @@
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+import Data.List (union, nub)
+
+import System.Random (StdGen, mkStdGen, split, randomRs)
+import System.Environment (getArgs)
+
+import Control.Parallel.Strategies (NFData)
+
+
 newtype Talk = Talk Int
     deriving (Eq, Ord)
 
@@ -8,29 +19,39 @@ instance Show Talk where
 
 data Person = Person {
     name :: String,
-    talks :: [Talks]
+    talks :: [Talk]
 } deriving (Show)
 
 type TimeTable = [[Talk]]
 
 timetable :: [Person] -> [Talk] -> Int -> Int -> [TimeTable]
-timetable people talks maxTrack maxSlot = 
+timetable people allTalks maxTrack maxSlot = 
 
-clashes :: Map Talk [Talk]
-clashes = Map.fromListWith union [(t, ts) | p <- people, (t, ts) <- selects (talks p) ]
+    generate 0 0 [] [] allTalks allTalks
 
-generate :: Int -> Int -> [[Talk]] -> [Talk] -> [Talk] -> [Talk] -> [TimeTable]
-generate slotNo trackNo slots slot slotTalks talks
-    | slotNo == maxSlot = [slots]
-    | trackNo == maxTrack = 
-        generate (slotNo + 1) 0 (slot:slots) [] talks talks
-    | otherwise = concat
-        [ generate slotNo (trackNo + 1) slots (t:slot) slotTalks' talks' 
-        | (t, ts) <- selects slotTalks
-        , let clashesWithT = Map.findWithDefault [] t clashes
-        , let slotTalks' = filter (`notElem` clashesWithT) ts
-        , let talks' = filter (/= t) talks
-        ]
+    where
+
+        clashes :: Map Talk [Talk]
+        clashes = Map.fromListWith union [(t, ts) | p <- people, (t, ts) <- selects (talks p) ]
+
+        generate :: Int -> Int -> [[Talk]] -> [Talk] -> [Talk] -> [Talk] -> [TimeTable]
+        generate slotNo trackNo slots slot slotTalks talks
+            | slotNo == maxSlot = [slots]
+            | trackNo == maxTrack = 
+                generate (slotNo + 1) 0 (slot:slots) [] talks talks
+            | otherwise = concat
+                [ generate slotNo (trackNo + 1) slots (t:slot) slotTalks' talks' 
+                | (t, ts) <- selects slotTalks
+                , let clashesWithT = Map.findWithDefault [] t clashes
+                , let slotTalks' = filter (`notElem` clashesWithT) ts
+                , let talks' = filter (/= t) talks
+                ]
+
+selects :: [a] -> [(a,[a])]
+selects xs0 = go [] xs0
+  where
+   go xs [] = []
+   go xs (y:ys) = (y,xs++ys) : go (y:xs) ys
 
 
 bench :: Int -> Int -> Int -> Int -> Int -> StdGen
