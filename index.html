@@ -177,11 +177,69 @@ main = do
                 </section>
 
 				<section>
-				    <h2>Concurrency</h2>
-                    <p>Multi-tasking</p>
-                    <p>Non-deterministic</p>
-                </section> 
+                    <section>
+				    <h2>Deterministic Example</h2>
+                    <pre><code data-trim contenteditable>
+import Control.Monad.Par (runPar, new, fork, put, get)
 
+main :: IO ()
+main = do
+    let result = runPar $ do
+        a &lt;- new
+        fork $ put a (fib 31)
+        fork $ put a (fib 1)
+        a' &lt;- get a
+        return a'
+    print result
+    where
+        fib :: Int -&gt; Int
+        fib 0 = 1
+        fib 1 = 1
+        fib x = fib (x - 1) + fib (x - 2)
+                    </pre></code>
+                    </section>
+                    <section>
+                        <h2>Results In</h2>
+                        <pre>
+$ ghc ./examples/racepar.hs -threaded 
+$ ./examples/racepar +RTS -N2
+racepar: multiple put
+racepar: thread blocked indefinitely in an MVar operation 
+                        </pre>
+                    </section>
+                </section> 
+				<section>
+                    <section>
+				    <h2>Non-deterministic Example</h2>
+                    <pre><code data-trim contenteditable>
+import Control.Concurrent
+
+main :: IO ()
+main = do
+    a &lt;- newEmptyMVar
+    forkIO $ do
+        putMVar a (fib 31)
+    forkIO $ do
+        putMVar a (fib 30)
+    result &lt;- takeMVar a
+    print result
+    where
+        fib :: Int -&gt; Int
+        fib 0 = 1
+        fib 1 = 1
+        fib x = fib (x - 1) + fib (x - 2)
+
+                    </pre></code>
+                    </section>
+                    <section>
+                        <h2>Results In</h2>
+                        <pre>
+$ ghc ./examples/racecon.hs -threaded 
+$ ./examples/racecon +RTS -N2
+???
+                        </pre>
+                    </section>
+                </section> 
 			</div>
 
 		</div>
