@@ -240,7 +240,58 @@ $ ./examples/racecon +RTS -N2
                         </pre>
                     </section>
                 </section> 
-			</div>
+            <section>
+                <h2>Distributed Haskell</h2>
+                <p>Plays to Haskell's strengths</p>
+            </section>
+            
+            <section>
+                <section>
+                <h2>Message Type</h2>
+                <pre><code data-trim contenteditable>
+data Message = Ping ProcessId
+             | Pong ProcessId deriving (Typeable, Generic)
+
+instance Binary Message
+                </code></pre>
+                </section>
+                
+                <section>
+                <h2>Server</h2>
+                <pre><code data-trim contenteditable>
+pingServer :: Process ()
+pingServer = do
+    Ping to &lt;- expect
+    say "ping."
+    from &lt;- getSelfPid
+    send to (Pong from)
+
+remotable ['pingServer]
+                </code></pre>
+                </section>
+                
+                <section>
+                <h2>Master</h2>
+                <pre><code data-trim contenteditable>
+master :: Process ()
+master = do
+    node &lt;- getSelfNode
+  
+    to &lt;- spawn node $(mkStaticClosure 'pingServer)
+    from &lt;- getSelfPid
+    send to (Ping from)
+    
+    Pong _ &lt;- expect 
+    say "pong."
+
+    terminate
+                </code></pre>
+                </section>
+            </section>
+
+
+
+            </div>
 
 		</div>
 
