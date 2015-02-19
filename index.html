@@ -273,7 +273,7 @@ remotable ['pingServer]
                 <section>
                 <h2>Master</h2>
                 <pre><code data-trim contenteditable>
-master :: Process ()
+master :: [NodeId] -&gt; Process ()
 master = do
     node &lt;- getSelfNode
   
@@ -292,9 +292,7 @@ master = do
                 <pre><code data-trim contenteditable>
 main :: IO ()
 main = do
-
-    let rtable = initRemoteTable
-    backend <- initializeBackend "localhost" "4444" rtable
+    backend <- initializeBackend "localhost" "4444" initRemoteTable
     startMaster backend master
 
                 </code></pre>
